@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>テトリス完成版</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #2e1e12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Helvetica Neue', sans-serif;
+    }
+    canvas {
+      margin-top: 20px;
+      background-color: #000;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    .controls, .character-select, .difficulty-select {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .controls button, .character-select button, .difficulty-select button {
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1.1rem;
+      background-color: #ffe8b6;
+      box-shadow: 0 4px #ccc;
+    }
+    .controls button:active, .character-select button:active, .difficulty-select button:active {
+      box-shadow: none;
+      transform: translateY(2px);
+    }
+    #score, #highscore {
+      margin-top: 8px;
+      font-size: 1.2rem;
+      color: white;
+    }
+    #characterIcon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 55px;
+      height: 55px;
+    }
+  </style>
+</head>
+<body>
+  <img id="characterIcon" src="mochikuma.png" alt="キャラ" />
+  <canvas id="game" width="240" height="400"></canvas>
+  <div id="score">スコア: 0</div>
+  <div id="highscore">ハイスコア: 0</div>
+  <div class="controls">
+    <button id="left">←</button>
+    <button id="rotate">↻</button>
+    <button id="right">→</button>
+    <button id="down">↓</button>
+  </div>
+  <div class="character-select">
+    <button onclick="setTheme('kuma')" id="kumaBtn">もちくま</button>
+    <button onclick="setTheme('usagi')" id="usagiBtn">もちうさぎ</button>
+    <button onclick="setTheme('kitsune')" id="kitsuneBtn">もちきつね</button>
+  </div>
+  <div class="difficulty-select">
+    <button onclick="setDifficulty('easy')" id="easyBtn">EASY</button>
+    <button onclick="setDifficulty('normal')" id="normalBtn">NORMAL</button>
+    <button onclick="setDifficulty('hard')" id="hardBtn">HARD</button>
+  </div>
+<script>
+// 機能部分は後続で追加（ここではレイアウトと見た目だけ先に整備）
+document.getElementById("kumaBtn").classList.add("selected");
+document.getElementById("normalBtn").classList.add("selected");
+
+function setTheme(name) {
+  const themes = {
+    kuma: { bg: '#2e1e12', block: '#ffe8b6', img: 'mochikuma.png' },
+    usagi: { bg: '#faf4f0', block: '#fca3b7', img: 'mochiusagi.png' },
+    kitsune: { bg: '#1f1b14', block: '#f2c97d', img: 'mochikitsune.png' }
+  };
+  document.body.style.backgroundColor = themes[name].bg;
+  document.getElementById('characterIcon').src = themes[name].img;
+}
+
+function setDifficulty(level) {
+  const speeds = { easy: 1000, normal: 600, hard: 300 };
+  document.getElementById('easyBtn').classList.remove("selected");
+  document.getElementById('normalBtn').classList.remove("selected");
+  document.getElementById('hardBtn').classList.remove("selected");
+  document.getElementById(level + 'Btn').classList.add("selected");
+}
+</script>
+</body>
+</html>
