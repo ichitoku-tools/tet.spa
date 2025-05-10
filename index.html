@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+  <title>テトリス</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background-color: #2e1e12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      background-color: #000;
+      margin-top: 10px;
+      border: 2px solid #fff;
+    }
+    .controls, .character-select {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    .controls button, .character-select button, #startButton {
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      background: #fff;
+    }
+    #characterIcon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 55px;
+      height: 55px;
+    }
+    #startButton {
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <img id="characterIcon" src="mochikuma.png" alt="キャラ">
+  <canvas id="game" width="240" height="400"></canvas>
+  <button id="startButton">ゲーム開始</button>
+  <div class="controls" id="controls" style="display:none;">
+    <button id="left">←</button>
+    <button id="down">↓</button>
+    <button id="right">→</button>
+    <button id="rotate">↻</button>
+  </div>
+  <div class="character-select">
+    <button onclick="setTheme('kuma')">もちくま</button>
+    <button onclick="setTheme('usagi')">もちうさぎ</button>
+    <button onclick="setTheme('kitsune')">もちきつね</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const blockSize = 20;
+    const rows = 20;
+    const cols = 12;
+    const gravityInterval = 1000;
+    const characterIcon = document.getElementById('characterIcon');
+    const themes = {
+      kuma: {bg: '#2e1e12', block: '#ffe8b6', img: 'mochikuma.png'},
+      usagi: {bg: '#faf4f0', block: '#fca3b7', img: 'mochiusagi.png'},
+      kitsune: {bg: '#1f1b14', block: '#f2c97d', img: 'mochikitsune.png'}
+    };
+    let theme = 'kuma';
+    let grid, current, timer, score = 0;
+
+    // ブロック定義
+    const shapes = [
+      [[1, 1, 1, 1]],
+      [[1, 1], [1, 1]],
+      [[0, 1, 0], [1, 1, 1]],
+      [[1, 0, 0], [1, 1, 1]],
+      [[0, 0, 1], [1, 1, 1]]
+    ];
+
+    function playSound(name) {
+      const audio = new Audio(name + '.mp3');
+      audio.play();
+    }
+
+    function unlockAudio() {
+      const unlock = () => {
+        ["bgm", "move", "rotate", "drop", "clear"].forEach(name => {
+          const a = new Audio(name + '.mp3');
+          a.play().catch(()=>{});
+        });
+        document.removeEventListener('touchstart', unlock);
+      };
+      document.addEventListener('touchstart', unlock, {once:true});
+    }
+
+    function createGrid() {
+      return Array.from({length: rows}, () => Array(cols).fill(0));
+    }
+
+    function drawBlock(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x+4, y);
+      ctx.arcTo(x+blockSize, y, x+blockSize, y+blockSize, 6);
+      ctx.arcTo(x+blockSize, y+blockSize, x, y+blockSize, 6);
+      ctx.arcTo(x, y+blockSize, x, y, 6);
+      ctx.arcTo(x, y, x+blockSize, y, 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c]) drawBlock(c*blockSize, r*blockSize, themes[theme].block);
+        }
+      }
+      if (current) {
+        current.shape.forEach((row, dy) => {
+          row.forEach((v, dx) => {
+            if (v) drawBlock((current.x+dx)*blockSize, (current.y+dy)*blockSize, themes[theme].block);
+          });
+        });
+      }
+    }
+
+    function collide() {
+      return current.shape.some((row, dy) =>
+        row.some((v, dx) => {
+          const x = current.x + dx;
+          const y = current.y + dy;
+          return v && (grid[y]?.[x] || y >= rows || x < 0 || x >= cols);
+        })
+      );
+    }
+
+    function merge() {
+      current.shape.forEach((row, dy) => {
+        row.forEach((v, dx) => {
+          if (v) grid[current.y+dy][current.x+dx] = 1;
+        });
+      });
+      playSound('drop');
+    }
+
+    function rotate() {
+      playSound('rotate');
+      const newShape = current.shape[0].map((_, i) => current.shape.map(r => r[i]).reverse());
+      const oldShape = current.shape;
+      current.shape = newShape;
+      if (collide()) current.shape = oldShape;
+    }
+
+    function move(dx, dy) {
+      current.x += dx;
+      current.y += dy;
+      if (collide()) {
+        current.x -= dx;
+        current.y -= dy;
+        if (dy > 0) {
+          current.y -= dy;
+          merge();
+          clearLines();
+          spawn();
+        }
+      }
+      playSound('move');
+      draw();
+    }
+
+    function spawn() {
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      current = {x: 4, y: 0, shape};
+      if (collide()) {
+        alert('ゲームオーバー');
+        clearInterval(timer);
+      }
+    }
+
+    function clearLines() {
+      let combo = 0;
+      grid = grid.filter(row => {
+        if (row.every(cell => cell)) {
+          combo++;
+          return false;
+        }
+        return true;
+      });
+      while (grid.length < rows) grid.unshift(Array(cols).fill(0));
+      if (combo) {
+        playSound('clear');
+        score += combo * 100;
+      }
+    }
+
+    function setTheme(name) {
+      theme = name;
+      document.body.style.backgroundColor = themes[theme].bg;
+      characterIcon.src = themes[theme].img;
+      draw();
+    }
+
+    document.getElementById('startButton').onclick = () => {
+      unlockAudio();
+      document.getElementById('startButton').style.display = 'none';
+      document.getElementById('controls').style.display = 'flex';
+      grid = createGrid();
+      spawn();
+      draw();
+      timer = setInterval(() => move(0, 1), gravityInterval);
+    };
+
+    document.getElementById('left').onmousedown = () => move(-1, 0);
+    document.getElementById('right').onmousedown = () => move(1, 0);
+    document.getElementById('down').onmousedown = () => move(0, 1);
+    document.getElementById('rotate').onmousedown = () => rotate();
+
+    // 長押し対応（モバイル用）
+    ['left', 'right', 'down'].forEach(id => {
+      const btn = document.getElementById(id);
+      let interval;
+      btn.ontouchstart = () => interval = setInterval(() => move(id==='left'?-1:id==='right'?1:0, id==='down'?1:0), 100);
+      btn.ontouchend = () => clearInterval(interval);
+    });
+  </script>
+</body>
+</html>
